@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  flipper-rpi-control:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: flipper-rpi-control
+    hostname: flipper-rpi-control
+    
+    # Keep container running
+    stdin_open: true
+    tty: true
+    
+    # Port mappings
+    ports:
+      - "5000:5000"  # Web UI
+      - "8888:8888"  # Default proxy port
+      - "9999:9999"  # Alternative proxy port
+    
+    # Volume mounts
+    volumes:
+      - ./flipper_rpi:/opt/flipper-rpi-control/flipper_rpi
+      - flipper_logs:/root/.flipper-rpi/logs
+      - flipper_config:/root/.flipper-rpi
+    
+    # Environment variables
+    environment:
+      - LOG_LEVEL=INFO
+      - PYTHONUNBUFFERED=1
+      - FLIPPER_URL=http://flipper-http:8080
+    
+    # Network
+    networks:
+      - flipper-network
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "flipper-rpi", "connect"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: FlipperHTTP service (if available)
+  flipper-http:
+    image: flipper-http:latest
+    container_name: flipper-http
+    hostname: flipper-http
+    
+    ports:
+      - "8080:8080"
+    
+    networks:
+      - flipper-network
+    
+    restart: unless-stopped
+    
+    # Uncomment to use a local FlipperHTTP binary instead
+    # build:
+    #   context: ./flipper-http
+    #   dockerfile: Dockerfile
+
+volumes:
+  flipper_logs:
+    driver: local
+  flipper_config:
+    driver: local
+
+networks:
+  flipper-network:
+    driver: bridge
